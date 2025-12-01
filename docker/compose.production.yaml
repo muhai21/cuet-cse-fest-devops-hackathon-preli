@@ -1,6 +1,44 @@
-# services:
-  # backend:
+services:
+  mongo:
+    image: mongo:latest
+    container_name: mongo_db
+    restart: always
+    env_file:
+      - ../.env
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - mcr_net
 
-  # gateway:
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: backend_prod
+    env_file:
+      - ../.env
+    networks:
+      - mcr_net
+    depends_on:
+      - mongo
 
-  # mongo:
+  gateway:
+    build:
+      context: ../gateway
+      dockerfile: Dockerfile
+    container_name: gateway_prod
+    ports:
+      - "${GATEWAY_PORT}:${GATEWAY_PORT}"
+    env_file:
+      - ../.env
+    networks:
+      - mcr_net
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:
+
+networks:
+  mcr_net:
+    driver: bridge
