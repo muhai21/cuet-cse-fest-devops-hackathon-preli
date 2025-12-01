@@ -18,6 +18,11 @@ endif
 
 dev:
 	@echo "Starting development environment..."
+	@if [ ! -f .env ]; then \
+		echo "Copying .env.example to .env"; \
+		cp .env.example .env; \
+		cp .env.example docker/.env; \
+	fi
 	@docker-compose -f $(DEV_COMPOSE) --env-file .env up --build
 
 down:
