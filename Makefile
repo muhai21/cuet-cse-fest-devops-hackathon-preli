@@ -1,50 +1,53 @@
-# Docker Services:
-#   up - Start services (use: make up [service...] or make up MODE=prod, ARGS="--build" for options)
-#   down - Stop services (use: make down [service...] or make down MODE=prod, ARGS="--volumes" for options)
-#   build - Build containers (use: make build [service...] or make build MODE=prod)
-#   logs - View logs (use: make logs [service] or make logs SERVICE=backend, MODE=prod for production)
-#   restart - Restart services (use: make restart [service...] or make restart MODE=prod)
-#   shell - Open shell in container (use: make shell [service] or make shell SERVICE=gateway, MODE=prod, default: backend)
-#   ps - Show running containers (use MODE=prod for production)
-#
-# Convenience Aliases (Development):
-#   dev-up - Alias: Start development environment
-#   dev-down - Alias: Stop development environment
-#   dev-build - Alias: Build development containers
-#   dev-logs - Alias: View development logs
-#   dev-restart - Alias: Restart development services
-#   dev-shell - Alias: Open shell in backend container
-#   dev-ps - Alias: Show running development containers
-#   backend-shell - Alias: Open shell in backend container
-#   gateway-shell - Alias: Open shell in gateway container
-#   mongo-shell - Open MongoDB shell
-#
-# Convenience Aliases (Production):
-#   prod-up - Alias: Start production environment
-#   prod-down - Alias: Stop production environment
-#   prod-build - Alias: Build production containers
-#   prod-logs - Alias: View production logs
-#   prod-restart - Alias: Restart production services
-#
-# Backend:
-#   backend-build - Build backend TypeScript
-#   backend-install - Install backend dependencies
-#   backend-type-check - Type check backend code
-#   backend-dev - Run backend in development mode (local, not Docker)
-#
-# Database:
-#   db-reset - Reset MongoDB database (WARNING: deletes all data)
-#   db-backup - Backup MongoDB database
-#
-# Cleanup:
-#   clean - Remove containers and networks (both dev and prod)
-#   clean-all - Remove containers, networks, volumes, and images
-#   clean-volumes - Remove all volumes
-#
-# Utilities:
-#   status - Alias for ps
-#   health - Check service health
-#
-# Help:
-#   help - Display this help message
+# Makefile for MERN E-commerce Microservices
 
+# Default mode is development
+MODE ?= dev
+
+# Compose files
+DEV_COMPOSE = docker/compose.development.yaml
+PROD_COMPOSE = docker/compose.production.yaml
+
+# Set compose file based on mode
+ifeq ($(MODE),prod)
+    COMPOSE_FILE = $(PROD_COMPOSE)
+else
+    COMPOSE_FILE = $(DEV_COMPOSE)
+endif
+
+.PHONY: dev down prod prod-down logs test
+
+dev:
+	@echo "Starting development environment..."
+	@docker-compose -f $(DEV_COMPOSE) --env-file .env up --build
+
+down:
+	@echo "Stopping development environment..."
+	@docker-compose -f $(DEV_COMPOSE) --env-file .env down
+
+prod:
+	@echo "Starting production environment..."
+	@docker-compose -f $(PROD_COMPOSE) --env-file .env up -d --build
+
+prod-down:
+	@echo "Stopping production environment..."
+	@docker-compose -f $(PROD_COMPOSE) --env-file .env down
+
+logs:
+	@docker-compose -f $(COMPOSE_FILE) --env-file .env logs -f
+
+test:
+	@echo "--- Running Health Checks ---"
+	@echo "Gateway health:"
+	@curl http://localhost:5921/health
+	@echo "\nBackend health via gateway:"
+	@curl http://localhost:5921/api/health
+	@echo "\n\n--- Running Product Management Tests ---"
+	@echo "Create a product:"
+	@curl -X POST http://localhost:5921/api/products \
+		-H 'Content-Type: application/json' \
+		-d '{"name":"Test Product","price":99.99}'
+	@echo "\nGet all products:"
+	@curl http://localhost:5921/api/products
+	@echo "\n\n--- Running Security Test ---"
+	@echo "Verify backend is not directly accessible (should fail):"
+	@curl http://localhost:3847/api/products || echo "Command failed as expected."
